@@ -7,13 +7,24 @@
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
+    <div id="hud">Score: 0</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        let scene, camera, renderer, playerShip, stars = [], planets = [];
+        let scene, camera, renderer, playerShip, stars = [], planets = [], projectiles = [], enemyShips = [];
         const keyState = {};
+        let score = 0;
+        const hud = document.getElementById('hud');
 
         function init() {
             scene = new THREE.Scene();
@@ -63,12 +74,32 @@
 
             camera.position.z = 5;
 
+            createEnemyShips(5);
+
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
         }
 
+        function createEnemyShips(num) {
+            for (let i = 0; i < num; i++) {
+                const enemyGeometry = new THREE.BoxGeometry(1, 1, 1);
+                const enemyMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                const enemyShip = new THREE.Mesh(enemyGeometry, enemyMaterial);
+                enemyShip.position.set(
+                    Math.random() * 20 - 10,
+                    Math.random() * 20 - 10,
+                    Math.random() * -50 - 10
+                );
+                enemyShips.push(enemyShip);
+                scene.add(enemyShip);
+            }
+        }
+
         function onKeyDown(event) {
             keyState[event.code] = true;
+            if (event.code === 'Space') {
+                shootProjectile();
+            }
         }
 
         function onKeyUp(event) {
@@ -83,10 +114,62 @@
             if (keyState['ArrowDown']) playerShip.position.y -= moveSpeed;
         }
 
+        function shootProjectile() {
+            const projectileGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const projectileMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+            projectile.position.set(playerShip.position.x, playerShip.position.y, playerShip.position.z - 0.5);
+            projectiles.push(projectile);
+            scene.add(projectile);
+        }
+
+        function updateProjectiles() {
+            const projectileSpeed = 0.2;
+            projectiles.forEach((projectile, index) => {
+                projectile.position.z -= projectileSpeed;
+                if (projectile.position.z < -100) {
+                    scene.remove(projectile);
+                    projectiles.splice(index, 1);
+                }
+            });
+        }
+
+        function updateEnemyShips() {
+            enemyShips.forEach((enemyShip, index) => {
+                enemyShip.position.z += 0.05;
+                if (enemyShip.position.z > 5) {
+                    enemyShip.position.z = Math.random() * -50 - 10;
+                    enemyShip.position.x = Math.random() * 20 - 10;
+                    enemyShip.position.y = Math.random() * 20 - 10;
+                }
+            });
+        }
+
+        function detectCollisions() {
+            projectiles.forEach((projectile, pIndex) => {
+                enemyShips.forEach((enemyShip, eIndex) => {
+                    const distance = projectile.position.distanceTo(enemyShip.position);
+                    if (distance < 1) {
+                        scene.remove(enemyShip);
+                        scene.remove(projectile);
+                        projectiles.splice(pIndex, 1);
+                        enemyShips.splice(eIndex, 1);
+                        score += 10;
+                        hud.textContent = `Score: ${score}`;
+                        // Reset enemy ship position after being hit
+                        createEnemyShips(1);
+                    }
+                });
+            });
+        }
+
         function animate() {
             requestAnimationFrame(animate);
 
             updatePlayerShip();
+            updateProjectiles();
+            updateEnemyShips();
+            detectCollisions();
 
             // Rotate planets
             planets.forEach(planet => {
