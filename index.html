@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Space Shooter</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, playerShip, stars = [], planets = [];
+        const keyState = {};
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const shipGeometry = new THREE.ConeGeometry(0.5, 1, 32);
+            const shipMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            playerShip = new THREE.Mesh(shipGeometry, shipMaterial);
+            playerShip.position.z = -5;
+            scene.add(playerShip);
+
+            const starGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            for (let i = 0; i < 200; i++) {
+                const star = new THREE.Mesh(starGeometry, starMaterial);
+                star.position.set(
+                    Math.random() * 100 - 50,
+                    Math.random() * 100 - 50,
+                    Math.random() * 50 - 100
+                );
+                stars.push(star);
+                scene.add(star);
+            }
+
+            const planetColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+            for (let i = 0; i < 4; i++) {
+                const planetGeometry = new THREE.SphereGeometry(2, 32, 32);
+                const planetMaterial = new THREE.MeshPhongMaterial({ color: planetColors[i] });
+                const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+                planet.position.set(
+                    Math.random() * 100 - 50,
+                    Math.random() * 100 - 50,
+                    Math.random() * 50 - 100
+                );
+                planets.push(planet);
+                scene.add(planet);
+            }
+
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            camera.position.z = 5;
+
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+        }
+
+        function onKeyDown(event) {
+            keyState[event.code] = true;
+        }
+
+        function onKeyUp(event) {
+            keyState[event.code] = false;
+        }
+
+        function updatePlayerShip() {
+            const moveSpeed = 0.1;
+            if (keyState['ArrowLeft']) playerShip.position.x -= moveSpeed;
+            if (keyState['ArrowRight']) playerShip.position.x += moveSpeed;
+            if (keyState['ArrowUp']) playerShip.position.y += moveSpeed;
+            if (keyState['ArrowDown']) playerShip.position.y -= moveSpeed;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            updatePlayerShip();
+
+            // Rotate planets
+            planets.forEach(planet => {
+                planet.rotation.y += 0.005;
+            });
+
+            // Move stars to create parallax effect
+            stars.forEach(star => {
+                star.position.z += 0.1;
+                if (star.position.z > 0) {
+                    star.position.z = -100;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
